@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora R134a - Propriedades de Saturação</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Calculadora R134a - Propriedades de Saturação</h1>
+        <p>Baseado em correlações de script FORTRAN.</p>
+
+        <div class="input-section">
+            <label for="temperature">Temperatura de Saturação (°C):</label>
+            <input type="number" id="temperature" placeholder="Ex: 25.0" step="0.1" required>
+            <button id="calculateButton">Calcular</button>
+        </div>
+
+        <div class="results-section">
+            <h2>Resultados:</h2>
+            <p><strong>Pressão de Saturação (P):</strong> <span id="resultPressure"></span></p>
+            <p><strong>Entalpia Líquido Saturado (HL):</strong> <span id="resultHL"></span></p>
+            <p><strong>Entalpia Vapor Saturado (HV):</strong> <span id="resultHV"></span></p>
+            <p><strong>Calor Latente de Vaporização (HV-HL):</strong> <span id="resultLatentHeat"></span></p>
+            <p id="errorMessage" class="error-message"></p>
+            <p class="units">Unidades: Pressão (kPa), Entalpias (kJ/kg)</p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('calculateButton').addEventListener('click', calculateProperties);
+        document.getElementById('temperature').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                calculateProperties();
+            }
+        });
+
+        async function calculateProperties() {
+            const temperatureInput = document.getElementById('temperature');
+            const temperature = parseFloat(temperatureInput.value);
+            const errorMessage = document.getElementById('errorMessage');
+
+            errorMessage.textContent = ''; // Limpa mensagens de erro anteriores
+            document.getElementById('resultPressure').textContent = '';
+            document.getElementById('resultHL').textContent = '';
+            document.getElementById('resultHV').textContent = '';
+            document.getElementById('resultLatentHeat').textContent = '';
+
+
+            if (isNaN(temperature)) {
+                errorMessage.textContent = 'Por favor, digite um número válido para a temperatura.';
+                return;
+            }
+
+            // Validação de range (opcional, mas bom para feedback ao usuário)
+            if (temperature < -40 || temperature > 100) {
+                 errorMessage.textContent = 'Atenção: Temperatura fora do range comum (-40 a 100 °C) para R134a. Resultados podem não ser precisos.';
+                 // Continue com o cálculo, mas avise
+            }
+
+
+            try {
+                // AQUI É ONDE O JAVASCRIPT SE CONECTA COM O SEU SERVIDOR PYTHON
+                // Você precisará substituir esta URL pela URL do seu serviço de backend quando estiver online.
+                // Para testes locais, será http://127.0.0.1:5000/calculate
+                const response = await fetch('/calculate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ temperature: temperature })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Erro no servidor.');
+                }
+
+                const data = await response.json();
+
+                document.getElementById('resultPressure').textContent = `${data.pressure.toFixed(4)} kPa`;
+                document.getElementById('resultHL').textContent = `${data.hl.toFixed(4)} kJ/kg`;
+                document.getElementById('resultHV').textContent = `${data.hv.toFixed(4)} kJ/kg`;
+                document.getElementById('resultLatentHeat').textContent = `${data.latent_heat.toFixed(4)} kJ/kg`;
+
+            } catch (error) {
+                errorMessage.textContent = `Erro ao calcular: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
