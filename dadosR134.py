@@ -1,3 +1,5 @@
+import tkinter as tk
+from tkinter import ttk
 import math
 
 # Constantes para as correlações do R134a (extraídas do script FORTRAN)
@@ -29,19 +31,9 @@ O = 0.00001022830
 P_const = 0.000000009998000 # Renomeado para P_const para evitar conflito com 'P' de Pressão
 
 def calcular_pressao_sat(temperatura_kelvin):
-    """
-    Calcula a pressão de saturação do R134a.
-    Baseado na correlação do script FORTRAN.
-
-    Args:
-        temperatura_kelvin (float): Temperatura de saturação em Kelvin.
-
-    Returns:
-        float: Pressão de saturação em kPa.
-    """
+    """Calcula a pressão de saturação."""
     if temperatura_kelvin <= 0:
         raise ValueError("A temperatura em Kelvin deve ser positiva.")
-
     try:
         ln_P = (A + B / temperatura_kelvin +
                 C * math.log(temperatura_kelvin) +
@@ -55,73 +47,100 @@ def calcular_pressao_sat(temperatura_kelvin):
         raise RuntimeError(f"Erro no cálculo da pressão: {e}")
 
 def calcular_hl_sat(temperatura_celsius):
-    """
-    Calcula a entalpia do líquido saturado do R134a.
-    Baseado na correlação polinomial do script FORTRAN.
-
-    Args:
-        temperatura_celsius (float): Temperatura de saturação em Celsius.
-
-    Returns:
-        float: Entalpia do líquido saturado em kJ/kg.
-    """
-    # Para as constantes G, H, I, J, K, o script FORTRAN mostra I, J, K como zero.
-    # Se essa é a intenção, a equação simplifica para HL = G + H*T.
+    """Calcula a entalpia do líquido saturado."""
     return G + H * temperatura_celsius + I * (temperatura_celsius**2) + J * (temperatura_celsius**3) + K * (temperatura_celsius**4)
 
 def calcular_hv_sat(temperatura_celsius):
-    """
-    Calcula a entalpia do vapor saturado do R134a.
-    Baseado na correlação polinomial do script FORTRAN.
-
-    Args:
-        temperatura_celsius (float): Temperatura de saturação em Celsius.
-
-    Returns:
-        float: Entalpia do vapor saturado em kJ/kg.
-    """
+    """Calcula a entalpia do vapor saturado."""
     return (L + M * temperatura_celsius + N * (temperatura_celsius**2) +
             O * (temperatura_celsius**3) + P_const * (temperatura_celsius**4))
 
-if __name__ == "__main__":
-    print("--------------------------------------------------")
-    print(" Calculadora de Propriedades de Saturação do R134a")
-    print("--------------------------------------------------")
-    print("Baseado em correlações de script FORTRAN.")
-    print("Entre com a temperatura de saturação em Celsius.")
-    print("As propriedades serão retornadas em: ")
-    print("  - Pressão: kPa")
-    print("  - Entalpias (HL e HV): kJ/kg")
-    print("--------------------------------------------------")
+def calcular_propriedades():
+    """Função para calcular e exibir as propriedades."""
+    try:
+        temp_celsius_str = temp_entry.get()
+        temperatura_celsius = float(temp_celsius_str)
+        temperatura_kelvin = temperatura_celsius + 273.15
 
-    while True:
-        try:
-            temp_input_str = input("\nDigite a temperatura de saturação em Celsius (ou 'q' para sair): ")
+        if not (-40 <= temperatura_celsius <= 100):
+            resultado_pressao.config(text="Atenção: Temperatura fora do range comum.")
+            resultado_hl.config(text="")
+            resultado_hv.config(text="")
+            resultado_calor_latente.config(text="")
+            return
 
-            if temp_input_str.lower() == 'q':
-                print("Saindo do programa. Até mais!")
-                break
+        pressao_kpa = calcular_pressao_sat(temperatura_kelvin)
+        hl_kjkg = calcular_hl_sat(temperatura_celsius)
+        hv_kjkg = calcular_hv_sat(temperatura_celsius)
+        calor_latente = hv_kjkg - hl_kjkg
 
-            temperatura_celsius = float(temp_input_str)
-            temperatura_kelvin = temperatura_celsius + 273.15
+        resultado_pressao.config(text=f"{pressao_kpa:.4f} kPa")
+        resultado_hl.config(text=f"{hl_kjkg:.4f} kJ/kg")
+        resultado_hv.config(text=f"{hv_kjkg:.4f} kJ/kg")
+        resultado_calor_latente.config(text=f"{calor_latente:.4f} kJ/kg")
 
-            # Verifica um range razoável para o R134a
-            if not (-40 <= temperatura_celsius <= 100): # Exemplo de range comum para R134a
-                print("Atenção: A temperatura fornecida está fora de um range comum para R134a (-40 a 100 °C).")
-                print("Os resultados podem não ser precisos fora deste intervalo.")
+    except ValueError:
+        resultado_pressao.config(text="Erro: Digite um número válido.")
+        resultado_hl.config(text="")
+        resultado_hv.config(text="")
+        resultado_calor_latente.config(text="")
+    except Exception as e:
+        resultado_pressao.config(text=f"Erro: {e}")
+        resultado_hl.config(text="")
+        resultado_hv.config(text="")
+        resultado_calor_latente.config(text="")
 
+# Configuração da janela principal
+root = tk.Tk()
+root.title("Propriedades de Saturação do R134a")
 
-            pressao_kpa = calcular_pressao_sat(temperatura_kelvin)
-            hl_kjkg = calcular_hl_sat(temperatura_celsius)
-            hv_kjkg = calcular_hv_sat(temperatura_celsius)
+# Estilo para widgets (opcional)
+style = ttk.Style()
+style.theme_use('clam')
 
-            print(f"\n--- Resultados para T = {temperatura_celsius:.2f} °C ---")
-            print(f"  Pressão de Saturação (P): {pressao_kpa:.4f} kPa")
-            print(f"  Entalpia Líquido Saturado (HL): {hl_kjkg:.4f} kJ/kg")
-            print(f"  Entalpia Vapor Saturado (HV): {hv_kjkg:.4f} kJ/kg")
-            print(f"  Calor Latente de Vaporização (HV-HL): {(hv_kjkg - hl_kjkg):.4f} kJ/kg")
+# Frame principal
+main_frame = ttk.Frame(root, padding="12 12 12 12")
+main_frame.grid(column=0, row=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+root.columnconfigure(0, weight=1)
+root.rowconfigure(0, weight=1)
 
-        except ValueError as ve:
-            print(f"Erro de entrada: {ve}. Por favor, digite um número válido.")
-        except Exception as e:
-            print(f"Ocorreu um erro inesperado: {e}")
+# Label e Entry para Temperatura
+temp_label = ttk.Label(main_frame, text="Temperatura de Saturação (°C):")
+temp_label.grid(column=0, row=0, sticky=(tk.W, tk.E))
+temp_entry = ttk.Entry(main_frame)
+temp_entry.grid(column=1, row=0, sticky=(tk.W, tk.E))
+
+# Botão de Calcular
+calcular_button = ttk.Button(main_frame, text="Calcular", command=calcular_propriedades)
+calcular_button.grid(column=0, row=1, columnspan=2, pady=10)
+
+# Labels para Resultados
+pressao_label = ttk.Label(main_frame, text="Pressão de Saturação:")
+pressao_label.grid(column=0, row=2, sticky=tk.W)
+resultado_pressao = ttk.Label(main_frame, text="")
+resultado_pressao.grid(column=1, row=2, sticky=tk.E)
+
+hl_label = ttk.Label(main_frame, text="Entalpia Líquido Saturado (HL):")
+hl_label.grid(column=0, row=3, sticky=tk.W)
+resultado_hl = ttk.Label(main_frame, text="")
+resultado_hl.grid(column=1, row=3, sticky=tk.E)
+
+hv_label = ttk.Label(main_frame, text="Entalpia Vapor Saturado (HV):")
+hv_label.grid(column=0, row=4, sticky=tk.W)
+resultado_hv = ttk.Label(main_frame, text="")
+resultado_hv.grid(column=1, row=4, sticky=tk.E)
+
+calor_latente_label = ttk.Label(main_frame, text="Calor Latente de Vaporização:")
+calor_latente_label.grid(column=0, row=5, sticky=tk.W)
+resultado_calor_latente = ttk.Label(main_frame, text="")
+resultado_calor_latente.grid(column=1, row=5, sticky=tk.E)
+
+# Adiciona um pouco de padding aos widgets
+for child in main_frame.winfo_children():
+    child.grid_configure(padx=5, pady=5)
+
+# Permite que ao pressionar Enter no campo de temperatura, o cálculo seja feito
+root.bind('<Return>', lambda event=None: calcular_button.invoke())
+temp_entry.focus() # Coloca o foco inicial no campo de temperatura
+
+root.mainloop()
